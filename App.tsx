@@ -9,21 +9,65 @@ import {
   Pressable,
   ScrollView,
   ActivityIndicator,
+  Alert,
+  Keyboard,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useState } from 'react';
 
 const statusBarHeight = StatusBar.currentHeight;
+const KEY_GPT = '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';
 
 export default function App() {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [travel, setTravel] = useState('');
   const [city, setCity] = useState('');
   const [days, setDays] = useState(3);
 
-  function handleGenerate() {
-    console.log(city);
-    console.log(days.toFixed(0));
+  async function handleGenerate() {
+    if (city === '') {
+      Alert.alert('Atenção', 'Preencha o nome da cidade!');
+      return;
+    }
+    setTravel('');
+    setLoading(true);
+    Keyboard.dismiss();
+
+    const prompt = `Crie um roteiro para uma viagem de exatos ${days.toFixed(
+      0
+    )} dias na cidade de ${city}, busque por lugares turisticos, 
+    lugares mais visitados, seja preciso nos dias 
+    de estadia fornecidos e limite o roteiro apenas na cidade fornecida. Forneça apenas em tópicos com nome do local onde ir em cada dia.`;
+
+    fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${KEY_GPT}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.2,
+        max_tokens: 500,
+        top_p: 1,
+      }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        setTravel(data.choices[0].message.content);
+      })
+      .catch((error) => {
+        console.error(error);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }
 
   return (
@@ -63,7 +107,8 @@ export default function App() {
       <ScrollView
         contentContainerStyle={{ paddingBottom: 24 }}
         style={styles.containerScroll}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+      >
         {loading && (
           <View style={styles.content}>
             <Text style={styles.title}>Carregando roteiro...</Text>
